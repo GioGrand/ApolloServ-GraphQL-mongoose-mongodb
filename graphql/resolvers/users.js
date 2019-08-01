@@ -1,46 +1,46 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { UserInputError } = require('apollo-server');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { UserInputError } = require("apollo-server");
 
 const {
   validateRegisterInput,
   validateLoginInput
-} = require('../../util/validators');
-const { SECRET_KEY } = require('../../config');
-const User = require('../../models/User');
+} = require("../../util/validators");
+const { SECRET_KEY } = require("../../config");
+const User = require("../../models/User");
 
 function generateToken(user) {
   return jwt.sign(
     {
       id: user.id,
       email: user.email,
-      username: user.username
+      lastName: user.lastName
     },
     SECRET_KEY,
-    { expiresIn: '1h' }
+    { expiresIn: "1h" }
   );
 }
 
 module.exports = {
   Mutation: {
-    async login(_, { username, password }) {
-      const { errors, valid } = validateLoginInput(username, password);
+    async login(_, { email, password }) {
+      const { errors, valid } = validateLoginInput(email, password);
 
       if (!valid) {
-        throw new UserInputError('Errors', { errors });
+        throw new UserInputError("Errors", { errors });
       }
 
-      const user = await User.findOne({ username });
+      const user = await User.findOne({ email });
 
       if (!user) {
-        errors.general = 'User not found';
-        throw new UserInputError('User not found', { errors });
+        errors.general = "User not found";
+        throw new UserInputError("User not found", { errors });
       }
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
-        errors.general = 'Wrong crendetials';
-        throw new UserInputError('Wrong crendetials', { errors });
+        errors.general = "Wrong crendetials";
+        throw new UserInputError("Wrong crendetials", { errors });
       }
 
       const token = generateToken(user);
@@ -54,25 +54,26 @@ module.exports = {
     async register(
       _,
       {
-        registerInput: { username, email, password, confirmPassword }
+        registerInput: { firstName, lastName, email, password, confirmPassword }
       }
     ) {
       // Validate user data
       const { valid, errors } = validateRegisterInput(
-        username,
+        firstName,
+        lastName,
         email,
         password,
         confirmPassword
       );
       if (!valid) {
-        throw new UserInputError('Errors', { errors });
+        throw new UserInputError("Errors", { errors });
       }
       // TODO: Make sure user doesnt already exist
-      const user = await User.findOne({ username });
+      const user = await User.findOne({ email });
       if (user) {
-        throw new UserInputError('Username is taken', {
+        throw new UserInputError("Email is taken", {
           errors: {
-            username: 'This username is taken'
+            email: "This email is taken"
           }
         });
       }
@@ -81,7 +82,8 @@ module.exports = {
 
       const newUser = new User({
         email,
-        username,
+        firstName,
+        lastName,
         password,
         createdAt: new Date().toISOString()
       });
